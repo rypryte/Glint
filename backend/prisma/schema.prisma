@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hashed with bcrypt
+  name      String?
+  role      String   @default("ADMIN") // Supports future role-based permissions
+  createdAt DateTime @default(now())
+}
+
+model Inquiry {
+  id             String    @id @default(uuid())
+  ticketId       String    @unique // e.g., GLINT-REQ-2026-9872
+  name           String
+  organization   String
+  email          String
+  inquiryType    String    // e.g., "Defense Technology", "Government Inquiry", etc.
+  message        String
+  timestamp      DateTime  @default(now())
+  status         String    @default("PENDING") // PENDING, REVIEWED, ARCHIVED
+  ipAddress      String?   // Submitter IP address logged for security auditing
+  reviewNotes    String?   // Internally stored notes of the action taken
+  reviewedAt     DateTime?
+  reviewedBy     String?   // Admin ID who updated or actioned this inquiry
+}

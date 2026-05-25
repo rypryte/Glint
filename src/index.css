@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-graphite-950: #0a0b0d;
+  --color-graphite-900: #111418;
+  --color-graphite-800: #1a1e24;
+  --color-graphite-700: #292f3b;
+  --color-graphite-600: #3f495a;
+  --color-steel-500: #5d6b82;
+  --color-steel-400: #94a3b8;
+}
+
+/* Bento Card Style */
+.bento-card {
+  background: #111418;
+  border: 1px solid #1f2937;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bento-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 10px 30px -15px rgba(59, 130, 246, 0.15);
+}
+
+/* Custom background animation or details */
+.mesh-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+.radar-sweep {
+  background: conic-gradient(from 0deg at 50% 50%, rgba(59, 130, 246, 0.15) 0deg, transparent 90deg, transparent 360deg);
+}
+
+/* Soft custom scrollbar for pre-engineered look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0b0d;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+

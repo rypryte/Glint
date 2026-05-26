@@ -25,6 +25,7 @@ import RadarBackground from "./components/RadarBackground";
 import ProductCatalog from "./components/ProductCatalog";
 import SecureContactForm from "./components/SecureContactForm";
 import AdminDashboard from "./admin/AdminDashboard";
+import WorkspaceDashboard from "./workspace/WorkspaceDashboard";
 
 import {
   CAPABILITIES_DATA,
@@ -61,6 +62,73 @@ function CapabilityIcon({ name }: { name: string }) {
   }
 }
 
+function EnvironmentSelector() {
+  const [active, setActive] = React.useState<string>(() => {
+    const h = window.location.hash;
+    const p = window.location.pathname;
+    if (h.includes("admin") || p.includes("admin")) return "OPS";
+    if (h.includes("workspace") || p.includes("workspace")) return "WORKSPACE";
+    return "PUBLIC";
+  });
+
+  // Track popstate/hash changes to sync state of selector automatically
+  React.useEffect(() => {
+    const handleHashSync = () => {
+      const h = window.location.hash;
+      const p = window.location.pathname;
+      if (h.includes("admin") || p.includes("admin")) setActive("OPS");
+      else if (h.includes("workspace") || p.includes("workspace")) setActive("WORKSPACE");
+      else setActive("PUBLIC");
+    };
+    window.addEventListener("hashchange", handleHashSync);
+    window.addEventListener("popstate", handleHashSync);
+    return () => {
+      window.removeEventListener("hashchange", handleHashSync);
+      window.removeEventListener("popstate", handleHashSync);
+    };
+  }, []);
+
+  const switchEnvironment = (env: "PUBLIC" | "WORKSPACE" | "OPS") => {
+    setActive(env);
+    if (env === "PUBLIC") {
+      window.location.hash = "#/";
+    } else if (env === "WORKSPACE") {
+      window.location.hash = "#/workspace";
+    } else {
+      window.location.hash = "#/admin";
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 bg-graphite-900/90 backdrop-blur border border-white/10 px-4 py-2.5 rounded shadow-2xl flex items-center space-x-3 select-none text-left">
+      <div className="flex items-center space-x-1.5 border-r border-white/5 pr-3">
+        <Activity className="h-3.5 w-3.5 text-blue-500 animate-pulse" />
+        <span className="font-mono text-[9px] uppercase tracking-wider text-steel-400">Grid node</span>
+      </div>
+      <div className="flex items-center space-x-2 text-[10px] font-mono">
+        <button
+          onClick={() => switchEnvironment("PUBLIC")}
+          className={`px-3 py-1 rounded transition-colors cursor-pointer ${active === "PUBLIC" ? "bg-blue-600 text-white font-bold" : "text-steel-400 hover:text-white"}`}
+        >
+          🌐 public site
+        </button>
+        <button
+          onClick={() => switchEnvironment("WORKSPACE")}
+          className={`px-3 py-1 rounded transition-colors cursor-pointer ${active === "WORKSPACE" ? "bg-blue-600 text-white font-bold" : "text-steel-400 hover:text-white"}`}
+        >
+          🔒 client workspace
+        </button>
+        <button
+          onClick={() => switchEnvironment("OPS")}
+          className={`px-3 py-1 rounded transition-colors cursor-pointer ${active === "OPS" ? "bg-blue-600 text-white font-bold" : "text-steel-400 hover:text-white"}`}
+        >
+          🛡️ ops dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
@@ -85,6 +153,12 @@ export default function App() {
     currentPath === "/admin-dashboard" || 
     currentHash === "#/admin" || 
     currentHash === "#/admin-dashboard";
+
+  const isWorkspaceRoute = 
+    currentPath === "/workspace" || 
+    currentPath === "/workspace-dashboard" || 
+    currentHash === "#/workspace" || 
+    currentHash === "#/workspace-dashboard";
 
   const scrollToContact = (e: React.MouseEvent, type?: string) => {
     e.preventDefault();
@@ -114,11 +188,27 @@ export default function App() {
   };
 
   if (isAdminRoute) {
-    return <AdminDashboard />;
+    return (
+      <>
+        <AdminDashboard />
+        <EnvironmentSelector />
+      </>
+    );
+  }
+
+  if (isWorkspaceRoute) {
+    return (
+      <>
+        <WorkspaceDashboard />
+        <EnvironmentSelector />
+      </>
+    );
   }
 
   return (
     <div className="min-h-screen bg-graphite-950 text-white font-sans selection:bg-blue-500/30 selection:text-white">
+      {/* Dynamic Selector on Public Site */}
+      <EnvironmentSelector />
       {/* Absolute Header Navigation */}
       <Header />
 

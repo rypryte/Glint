@@ -13,6 +13,7 @@ export default function SecureContactForm() {
   });
 
   const [status, setStatus] = useState<"idle" | "securing" | "submitting" | "success" | "error">("idle");
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [ticketId, setTicketId] = useState("");
   const [logs, setLogs] = useState<string[]>([]);
 
@@ -34,7 +35,24 @@ export default function SecureContactForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.message || !formData.organization) {
+    setValidationError(null);
+
+    // Initial sanitization and checks
+    if (!formData.name.trim() || !formData.organization.trim() || !formData.email.trim() || !formData.message.trim()) {
+      setValidationError("All fields are required. Please populate all form fields.");
+      setStatus("error");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      setValidationError("Please enter a valid, contactable email address.");
+      setStatus("error");
+      return;
+    }
+
+    if (formData.message.trim().length < 15) {
+      setValidationError("[Transmission Error]\nSubmissions must include a brief details statement (minimum 15 characters).");
       setStatus("error");
       return;
     }
@@ -55,12 +73,21 @@ export default function SecureContactForm() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          organization: formData.organization.trim(),
+          email: formData.email.toLowerCase().trim(),
+          inquiryType: formData.inquiryType,
+          message: formData.message.trim()
+        })
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || "Credential rejection check occurred.");
+        // If it was a 400 validation rejection, we bubble it up differently so we don't treat it as offline fallback!
+        const parsedClass = res.status === 400 ? "VALIDATION_EXCEPTION" : "SECURITY_EXCEPTION";
+        const errorMsg = data.message || "Credential rejection check occurred.";
+        throw { type: parsedClass, message: errorMsg };
       }
 
       await addLog(`> Received tracking ID: ${data.ticketId}`, 200);
@@ -70,13 +97,22 @@ export default function SecureContactForm() {
       setStatus("success");
     } catch (err: any) {
       console.error("[Transmission Error]", err);
-      await addLog(`> SECURITY EXCEPTION: ${err.message || 'System error'}`, 200);
-      await addLog("> Falling back to offline local buffer...", 200);
       
-      // Fallback ticket generation in case of immediate environment server sync problems
-      const fallbackId = `GLINT-OFF-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      setTicketId(fallbackId);
-      setStatus("success");
+      const isValidation = err.type === "VALIDATION_EXCEPTION" || (err.message && err.message.includes("minimum 15 characters"));
+      
+      if (isValidation) {
+        const errorText = err.message || "Submissions must include a brief details statement (minimum 15 characters).";
+        setValidationError(`[Transmission Error]\n${errorText}`);
+        setStatus("error");
+      } else {
+        await addLog(`> SECURITY EXCEPTION: ${err.message || 'System error'}`, 200);
+        await addLog("> Falling back to offline local buffer...", 200);
+        
+        // Fallback ticket generation in case of immediate environment server sync problems
+        const fallbackId = `GLINT-OFF-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        setTicketId(fallbackId);
+        setStatus("success");
+      }
     }
   };
 
@@ -127,10 +163,10 @@ export default function SecureContactForm() {
               </p>
 
               {status === "error" && (
-                <div className="bg-red-950/30 border border-red-500/20 rounded p-3 flex items-start space-x-3">
-                  <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-300">
-                    All fields are required. Please enter correct name, email, and organization details before submitting.
+                <div className="bg-red-950/40 border border-red-500/30 rounded-lg p-3.5 flex items-start space-x-3 shadow-lg shadow-red-950/20">
+                  <AlertCircle className="h-4.5 w-4.5 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-300 font-sans leading-relaxed whitespace-pre-line">
+                    {validationError || "All fields are required. Please enter correct name, email, and organization details before submitting."}
                   </p>
                 </div>
               )}
@@ -208,9 +244,16 @@ export default function SecureContactForm() {
               </div>
 
               <div>
-                <label htmlFor="message" className="block text-xs font-mono text-steel-400 uppercase tracking-wider mb-2">
-                  Your Message
-                </label>
+                <div className="flex justify-between items-center mb-2">
+                  <label htmlFor="message" className="block text-xs font-mono text-steel-400 uppercase tracking-wider">
+                    Your Message
+                  </label>
+                  <span className={`text-[10px] font-mono ${
+                    formData.message.trim().length >= 15 ? "text-emerald-400" : formData.message.trim().length > 0 ? "text-amber-500 font-semibold" : "text-steel-600"
+                  }`}>
+                    {formData.message.trim().length} / 15 chars min
+                  </span>
+                </div>
                 <textarea
                   id="message"
                   name="message"
@@ -219,7 +262,11 @@ export default function SecureContactForm() {
                   value={formData.message}
                   onChange={handleInputChange}
                   placeholder="Please describe your requirements or the solutions you are looking to install..."
-                  className="w-full bg-graphite-950 border border-white/5 rounded px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+                  className={`w-full bg-graphite-950 border rounded px-4 py-3 text-sm text-white focus:outline-none transition-colors resize-none ${
+                    formData.message.trim().length > 0 && formData.message.trim().length < 15
+                      ? "border-amber-500/45 focus:border-amber-500/70"
+                      : "border-white/5 focus:border-blue-500/50"
+                  }`}
                 />
               </div>
 

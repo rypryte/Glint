@@ -10,27 +10,214 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Admin {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String   // Hashed with bcrypt
-  name      String?
-  role      String   @default("ADMIN") // Supports future role-based permissions
-  createdAt DateTime @default(now())
+model Inquiry {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fullName     String    @map("full_name") @db.VarChar(255)
+  organization String?   @db.VarChar(255)
+  email        String    @db.VarChar(255)
+  inquiryType  String?   @map("inquiry_type") @db.VarChar(100)
+  message      String    @db.Text
+  status       String    @default("PENDING") @db.VarChar(50) // PENDING | REVIEWED | ARCHIVED | CONVERTED
+  ipAddress    String?   @map("ip_address") @db.VarChar(50)
+  userAgent    String?   @map("user_agent") @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  projects     Project[]
+
+  @@map("inquiries")
 }
 
-model Inquiry {
-  id             String    @id @default(uuid())
-  ticketId       String    @unique // e.g., GLINT-REQ-2026-9872
-  name           String
-  organization   String
-  email          String
-  inquiryType    String    // e.g., "Defense Technology", "Government Inquiry", etc.
-  message        String
-  timestamp      DateTime  @default(now())
-  status         String    @default("PENDING") // PENDING, REVIEWED, ARCHIVED
-  ipAddress      String?   // Submitter IP address logged for security auditing
-  reviewNotes    String?   // Internally stored notes of the action taken
-  reviewedAt     DateTime?
-  reviewedBy     String?   // Admin ID who updated or actioned this inquiry
+model Project {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectCode String         @unique @map("project_code") @db.VarChar(20)
+  inquiryId   String?        @map("inquiry_id") @db.Uuid
+  clientId    String         @map("client_id") @db.Uuid
+  title       String         @db.VarChar(255)
+  description String?        @db.Text
+  status      String         @default("PENDING") @db.VarChar(50) // PENDING | APPROVED | ACTIVE | PAUSED | COMPLETED | CANCELLED
+  approvedBy  String?        @map("approved_by") @db.Uuid
+  approvedAt  DateTime?      @map("approved_at") @db.Timestamptz
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime       @default(now()) @map("updated_at") @db.Timestamptz
+
+  inquiry     Inquiry?       @relation(fields: [inquiryId], references: [id])
+  client      User           @relation("ClientProjects", fields: [clientId], references: [id])
+  approver    User?          @relation("ApprovedProjects", fields: [approvedBy], references: [id])
+  workspace   WorkspaceRoom?
+  payments    Payment[]
+  milestones  Milestones[]
+
+  @@map("projects")
+}
+
+model User {
+  id                       String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                    String         @unique @db.VarChar(255)
+  fullName                 String?        @map("full_name") @db.VarChar(255)
+  organization             String?        @db.VarChar(255)
+  role                     String         @default("CLIENT") @db.VarChar(50) // SUPER_ADMIN | ADMIN | CLIENT
+  passwordHash             String?        @map("password_hash") @db.Text
+  onboardingToken          String?        @map("onboarding_token") @db.Text
+  onboardingTokenExpiresAt DateTime?      @map("onboarding_token_expires_at") @db.Timestamptz
+  onboardingTokenUsed      Boolean        @default(false) @map("onboarding_token_used") @db.Boolean
+  lastLoginAt              DateTime?      @map("last_login_at") @db.Timestamptz
+  isActive                 Boolean        @default(true) @map("is_active") @db.Boolean
+  createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime       @default(now()) @map("updated_at") @db.Timestamptz
+
+  clientProjects           Project[]      @relation("ClientProjects")
+  approvedProjects         Project[]      @relation("ApprovedProjects")
+  verifiedPayments         Payment[]
+  messages                 Message[]
+  files                    File[]
+  permissions              Permission[]   @relation("UserPermissions")
+  grantedPermissions       Permission[]   @relation("GrantedPermissions")
+  sessions                 Session[]
+  auditLogs                AuditLog[]
+
+  @@map("users")
+}
+
+model WorkspaceRoom {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId       String       @unique @map("project_id") @db.Uuid
+  state           String       @default("LOCKED") @db.VarChar(50) // LOCKED | PROVISIONING | ACTIVATED | SUSPENDED
+  activatedAt     DateTime?    @map("activated_at") @db.Timestamptz
+  suspendedAt     DateTime?    @map("suspended_at") @db.Timestamptz
+  suspendedReason String?      @map("suspended_reason") @db.Text
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @default(now()) @map("updated_at") @db.Timestamptz
+
+  project         Project      @relation(fields: [projectId], references: [id])
+  messages        Message[]
+  files           File[]
+  permissions     Permission[]
+
+  @@map("workspace_rooms")
+}
+
+model Payment {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId        String    @map("project_id") @db.Uuid
+  amount           Decimal   @db.Decimal(15, 2)
+  currency         String    @default("NGN") @db.VarChar(10)
+  status           String    @default("PENDING") @db.VarChar(50) // PENDING | PROCESSING | VERIFIED | FAILED | REFUNDED
+  paymentType      String    @default("PROJECT_FEE") @map("payment_type") @db.VarChar(50) // PROJECT_FEE | MILESTONE
+  milestoneId      String?   @map("milestone_id") @db.Uuid
+  paymentReference String?   @map("payment_reference") @db.VarChar(255)
+  gateway          String    @default("MANUAL") @db.VarChar(100)
+  gatewayResponse  Json?     @map("gateway_response") @db.JsonB
+  verifiedBy       String?   @map("verified_by") @db.Uuid
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  project          Project   @relation(fields: [projectId], references: [id])
+  verifier         User?     @relation(fields: [verifiedBy], references: [id])
+
+  @@map("payments")
+}
+
+model Milestones {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  title       String    @db.VarChar(255)
+  description String?   @db.Text
+  orderIndex  Int       @map("order_index") @db.Integer
+  status      String    @default("PENDING") @db.VarChar(50) // PENDING | IN_PROGRESS | COMPLETED | PAYMENT_RELEASED
+  threadState String    @default("LOCKED") @map("thread_state") @db.VarChar(50) // LOCKED | UNLOCKED
+  amount      Decimal?  @db.Decimal(15, 2)
+  dueDate     DateTime? @map("due_date") @db.Date
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  project     Project   @relation(fields: [projectId], references: [id])
+  messages    Message[]
+
+  @@map("milestones")
+}
+
+model Message {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId     String      @map("workspace_id") @db.Uuid
+  milestoneId     String?     @map("milestone_id") @db.Uuid
+  senderId        String      @map("sender_id") @db.Uuid
+  content         String      @db.Text
+  isEncrypted     Boolean     @default(false) @map("is_encrypted") @db.Boolean
+  isSystemMessage Boolean     @default(false) @map("is_system_message") @db.Boolean
+  readBy          Json        @default("[]") @map("read_by") @db.JsonB
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  workspace       WorkspaceRoom @relation(fields: [workspaceId], references: [id])
+  milestone       Milestones?   @relation(fields: [milestoneId], references: [id])
+  sender          User        @relation(fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+model File {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId      String       @map("workspace_id") @db.Uuid
+  uploadedBy       String       @map("uploaded_by") @db.Uuid
+  filename         String       @db.VarChar(255)
+  originalFilename String?      @map("original_filename") @db.VarChar(255)
+  fileSize         BigInt?      @map("file_size") @db.BigInt
+  mimeType         String?      @map("mime_type") @db.VarChar(100)
+  storagePath      String       @map("storage_path") @db.Text
+  isEncrypted      Boolean      @default(false) @map("is_encrypted") @db.Boolean
+  accessLevel      String       @default("WORKSPACE") @map("access_level") @db.VarChar(50) // WORKSPACE | MILESTONE | ADMIN_ONLY
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  workspace        WorkspaceRoom @relation(fields: [workspaceId], references: [id])
+  uploader         User         @relation(fields: [uploadedBy], references: [id])
+
+  @@map("files")
+}
+
+model Permission {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  workspaceId     String       @map("workspace_id") @db.Uuid
+  permissionFlags Json         @default("[]") @map("permission_flags") @db.JsonB
+  grantedBy       String?      @map("granted_by") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @default(now()) @map("updated_at") @db.Timestamptz
+
+  user            User         @relation("UserPermissions", fields: [userId], references: [id])
+  workspace       WorkspaceRoom @relation(fields: [workspaceId], references: [id])
+  granter         User?        @relation("GrantedPermissions", fields: [grantedBy], references: [id])
+
+  @@map("permissions")
+}
+
+model Session {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @map("token_hash") @db.Text
+  ipAddress  String?   @map("ip_address") @db.VarChar(50)
+  userAgent  String?   @map("user_agent") @db.Text
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String   @db.VarChar(100)
+  targetType String?  @map("target_type") @db.VarChar(100)
+  targetId   String?  @map("target_id") @db.Uuid
+  metadata   Json?    @db.JsonB
+  ipAddress  String?  @map("ip_address") @db.VarChar(50)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  actor      User?    @relation(fields: [actorId], references: [id])
+
+  @@map("audit_logs")
 }

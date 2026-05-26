@@ -3,6 +3,7 @@ import { Shield, Lock } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const [modalType, setModalType] = React.useState<'PRIVACY' | 'SECURITY' | 'TERMS' | null>(null);
 
   const handleScrollToContact = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -11,6 +12,30 @@ export default function Footer() {
       element.scrollIntoView({ behavior: "smooth" });
     }
   };
+
+  const getModalContent = () => {
+    switch (modalType) {
+      case 'PRIVACY':
+        return {
+          title: "PRIVACY POLICY & DATA SOVEREIGNTY",
+          text: "All client configurations, hardware logs, personal operator alias registries, and system diagnostics are stored exclusively on secure local media with physical air-gapped protection. We guarantee 100% digital confidentiality: zero external telemetry trackers, zero third-party script integrations, and zero remote server transmissions are ever enabled on your private equipment grid."
+        };
+      case 'SECURITY':
+        return {
+          title: "SYSTEM SECURITY OPERATIONS NOTICE",
+          text: "Authorized Access Only. This local node operates with advanced cryptographic signatures. All transactions, operational triggers, and login attempts are strictly verified using local hash audits. Any invalid credential signatures or tampering anomalies are immediately stored in the local hardware vault to assist local administrator personnel."
+        };
+      case 'TERMS':
+        return {
+          title: "STANDARD INFRASTRUCTURE TERMS OF USE",
+          text: "By accessing and deploying Glint Technology solutions, operators agree to operate products within regional safety rules and approved server/camera hardware environments. Copying micro-kernel firmware versions or reverse-engineering proprietary sensor layouts is strictly prohibited under the sovereign system infrastructure distribution certificate."
+        };
+      default:
+        return null;
+    }
+  };
+
+  const modalData = getModalContent();
 
   return (
     <footer className="bg-[#0a0b0d] border-t border-white/5 py-12 relative overflow-hidden">
@@ -47,7 +72,7 @@ export default function Footer() {
               className="text-xs font-mono font-medium text-steel-400 hover:text-white transition-colors uppercase tracking-wider block"
               onClick={(e) => {
                 e.preventDefault();
-                alert("Privacy Policy: All client information is kept on secure, private physical hard drives with no internet connection, in complete compliance with regional storage security guidelines.");
+                setModalType('PRIVACY');
               }}
             >
               Privacy
@@ -57,17 +82,17 @@ export default function Footer() {
               className="text-xs font-mono font-medium text-steel-400 hover:text-white transition-colors uppercase tracking-wider block"
               onClick={(e) => {
                 e.preventDefault();
-                alert("Security Notice: This portal is continuously monitored to prevent intrusion. Any unauthorized access attempts are immediately logged to help protect our systems.");
+                setModalType('SECURITY');
               }}
             >
               Security Notice
             </a>
             <a
               href="#terms"
-              className="text-xs font-mono font-medium text-steel-400 hover:text-white transition-colors uppercase tracking-wider block"
+              className="text-xs font-mono font-medium text-[#7c8ba1]-400 hover:text-white tracking-widest uppercase tracking-wider block"
               onClick={(e) => {
                 e.preventDefault();
-                alert("Terms of Use: Glint Technology systems must be used in compliance with local rules, authorization guidelines, and standard equipment distribution agreements.");
+                setModalType('TERMS');
               }}
             >
               Terms
@@ -94,6 +119,29 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      {/* Styled Security Modal Overlay */}
+      {modalData && (
+        <div className="fixed inset-0 bg-graphite-950/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
+          <div className="bg-graphite-900 border border-white/10 rounded-xl max-w-lg w-full p-6 shadow-2xl relative space-y-4">
+            <div className="flex items-center space-x-2 text-blue-400 border-b border-white/5 pb-3">
+              <Shield className="h-5 w-5" />
+              <h3 className="font-mono text-xs font-bold uppercase tracking-wider">{modalData.title}</h3>
+            </div>
+            <p className="text-xs text-steel-300 leading-relaxed font-sans font-medium text-left">
+              {modalData.text}
+            </p>
+            <div className="pt-3 border-t border-white/5 flex justify-end">
+              <button
+                onClick={() => setModalType(null)}
+                className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white font-mono text-[10px] uppercase font-bold tracking-widest rounded cursor-pointer transition-colors"
+              >
+                Acknowledge and Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </footer>
   );
 }

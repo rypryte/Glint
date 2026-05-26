@@ -8,6 +8,9 @@ import { createServer as createViteServer } from "vite";
 // Backend Routers
 import authRouter from "./backend/routes/auth";
 import inquiriesRouter from "./backend/routes/inquiries";
+import workspaceRouter from "./backend/routes/workspace";
+import paymentsRouter from "./backend/routes/payments";
+import adminRouter from "./backend/routes/admin";
 import { accessLogMiddleware } from "./backend/middleware/security";
 
 // Instantiate Database and seed logs
@@ -33,6 +36,9 @@ async function startServer() {
   // Mount API Endpoints under secure prefix namespaces
   app.use("/api/auth", authRouter);
   app.use("/api/inquiries", inquiriesRouter);
+  app.use("/api/workspace", workspaceRouter);
+  app.use("/api/payments", paymentsRouter);
+  app.use("/api/admin", adminRouter);
 
   // Operational health monitoring endpoint
   app.get("/api/health", (req, res) => {

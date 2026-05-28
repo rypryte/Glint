@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion, useScroll, useSpring } from "motion/react";
 import {
   Shield,
   Eye,
@@ -25,12 +25,11 @@ import RadarBackground from "./components/RadarBackground";
 import ProductCatalog from "./components/ProductCatalog";
 import SecureContactForm from "./components/SecureContactForm";
 import AdminDashboard from "./admin/AdminDashboard";
-import WorkspaceDashboard from "./workspace/WorkspaceDashboard";
+import CustomCursor from "./components/CustomCursor";
 
 import {
   CAPABILITIES_DATA,
   OPERATIONAL_SECTORS_DATA,
-  RESEARCH_INNOVATION_DATA,
   TRUST_PRINCIPLES
 } from "./types";
 
@@ -62,76 +61,16 @@ function CapabilityIcon({ name }: { name: string }) {
   }
 }
 
-function EnvironmentSelector() {
-  const [active, setActive] = React.useState<string>(() => {
-    const h = window.location.hash;
-    const p = window.location.pathname;
-    if (h.includes("admin") || p.includes("admin")) return "OPS";
-    if (h.includes("workspace") || p.includes("workspace")) return "WORKSPACE";
-    return "PUBLIC";
-  });
-
-  // Track popstate/hash changes to sync state of selector automatically
-  React.useEffect(() => {
-    const handleHashSync = () => {
-      const h = window.location.hash;
-      const p = window.location.pathname;
-      if (h.includes("admin") || p.includes("admin")) setActive("OPS");
-      else if (h.includes("workspace") || p.includes("workspace")) setActive("WORKSPACE");
-      else setActive("PUBLIC");
-    };
-    window.addEventListener("hashchange", handleHashSync);
-    window.addEventListener("popstate", handleHashSync);
-    return () => {
-      window.removeEventListener("hashchange", handleHashSync);
-      window.removeEventListener("popstate", handleHashSync);
-    };
-  }, []);
-
-  const switchEnvironment = (env: "PUBLIC" | "WORKSPACE" | "OPS") => {
-    setActive(env);
-    if (env === "PUBLIC") {
-      window.location.hash = "#/";
-    } else if (env === "WORKSPACE") {
-      window.location.hash = "#/workspace";
-    } else {
-      window.location.hash = "#/admin";
-    }
-  };
-
-  return (
-    <div className="fixed bottom-6 right-6 z-50 bg-graphite-900/90 backdrop-blur border border-white/10 px-4 py-2.5 rounded shadow-2xl flex items-center space-x-3 select-none text-left">
-      <div className="flex items-center space-x-1.5 border-r border-white/5 pr-3">
-        <Activity className="h-3.5 w-3.5 text-blue-500 animate-pulse" />
-        <span className="font-mono text-[9px] uppercase tracking-wider text-steel-400">Grid node</span>
-      </div>
-      <div className="flex items-center space-x-2 text-[10px] font-mono">
-        <button
-          onClick={() => switchEnvironment("PUBLIC")}
-          className={`px-3 py-1 rounded transition-colors cursor-pointer ${active === "PUBLIC" ? "bg-blue-600 text-white font-bold" : "text-steel-400 hover:text-white"}`}
-        >
-          🌐 public site
-        </button>
-        <button
-          onClick={() => switchEnvironment("WORKSPACE")}
-          className={`px-3 py-1 rounded transition-colors cursor-pointer ${active === "WORKSPACE" ? "bg-blue-600 text-white font-bold" : "text-steel-400 hover:text-white"}`}
-        >
-          🔒 client workspace
-        </button>
-        <button
-          onClick={() => switchEnvironment("OPS")}
-          className={`px-3 py-1 rounded transition-colors cursor-pointer ${active === "OPS" ? "bg-blue-600 text-white font-bold" : "text-steel-400 hover:text-white"}`}
-        >
-          🛡️ ops dashboard
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [currentHash, setCurrentHash] = useState(window.location.hash);
+
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
 
   useEffect(() => {
     const handleLocationChange = () => {
@@ -153,12 +92,6 @@ export default function App() {
     currentPath === "/admin-dashboard" || 
     currentHash === "#/admin" || 
     currentHash === "#/admin-dashboard";
-
-  const isWorkspaceRoute = 
-    currentPath === "/workspace" || 
-    currentPath === "/workspace-dashboard" || 
-    currentHash === "#/workspace" || 
-    currentHash === "#/workspace-dashboard";
 
   const scrollToContact = (e: React.MouseEvent, type?: string) => {
     e.preventDefault();
@@ -191,24 +124,21 @@ export default function App() {
     return (
       <>
         <AdminDashboard />
-        <EnvironmentSelector />
-      </>
-    );
-  }
-
-  if (isWorkspaceRoute) {
-    return (
-      <>
-        <WorkspaceDashboard />
-        <EnvironmentSelector />
       </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-graphite-950 text-white font-sans selection:bg-blue-500/30 selection:text-white">
-      {/* Dynamic Selector on Public Site */}
-      <EnvironmentSelector />
+    <div className="min-h-screen bg-graphite-950 text-white font-sans selection:bg-blue-500/30 selection:text-white scroll-smooth">
+      {/* Precision Holographic Scroll Progress Bar */}
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 origin-left z-[9999] shadow-[0_0_12px_rgba(59,130,246,0.6)]"
+        style={{ scaleX }}
+      />
+
+      {/* Futuristic Tactical Tracker Cursor (Hides default pointer & builds grid Hud) */}
+      <CustomCursor />
+
       {/* Absolute Header Navigation */}
       <Header />
 
@@ -443,7 +373,13 @@ export default function App() {
       {/* 2. ABOUT SECTION */}
       <section id="about" className="py-24 border-t border-white/5 bg-[#0e1014] relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="max-w-3xl space-y-6 text-left"
+          >
             <span className="text-xs font-mono font-medium text-blue-500 uppercase tracking-widest block">
               Who We Are
             </span>
@@ -459,7 +395,7 @@ export default function App() {
                 We focus on creating highly reliable systems that operate completely offline. By building systems that do not depend on external cloud servers, we ensure that our partners maintain full ownership and total control over their security data and physical devices.
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -467,7 +403,13 @@ export default function App() {
       <section id="capabilities" className="py-24 border-t border-white/5 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="max-w-2xl text-left space-y-3 mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="max-w-2xl text-left space-y-3 mb-16"
+          >
             <span className="text-xs font-mono font-medium text-blue-500 uppercase tracking-widest block">
               Our Solutions
             </span>
@@ -477,17 +419,17 @@ export default function App() {
             <p className="text-sm text-steel-400 leading-relaxed">
               Our products and services are designed to keep your infrastructure safe. Every system runs on high-quality hardware optimized to handle tough environments.
             </p>
-          </div>
+          </motion.div>
 
           {/* Capabilities Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {CAPABILITIES_DATA.map((capability, index) => (
               <motion.div
                 key={capability.id}
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.05 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6, delay: index * 0.08 }}
                 className="bento-card p-6 flex flex-col justify-between"
               >
                 <div className="space-y-4">
@@ -530,60 +472,19 @@ export default function App() {
         </div>
       </section>
 
-      {/* 5. RESEARCH & INNOVATION SECTION */}
-      <section id="research" className="py-24 border-t border-white/5 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="max-w-2xl text-left space-y-3 mb-16">
-            <span className="text-xs font-mono font-medium text-blue-500 uppercase tracking-widest block">
-              Next Generation Systems
-            </span>
-            <h2 className="font-display font-medium text-2xl md:text-3xl text-white tracking-tight uppercase">
-              Future Projects &amp; Development
-            </h2>
-            <p className="text-sm text-steel-400 leading-relaxed">
-              We continuously test and develop new systems to verify that our security products remain reliable, fast, and easy to run in any weather or location.
-            </p>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {RESEARCH_INNOVATION_DATA.map((research, idx) => (
-              <motion.div
-                key={research.id}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="bento-card p-6 flex flex-col justify-between"
-              >
-                <div className="space-y-4">
-                  <span className="font-mono text-[9px] text-[#7c8ba1]/50 uppercase tracking-widest block">
-                    RESEARCH DOMAIN // 0{idx + 1}
-                  </span>
-                  <h3 className="font-display font-medium text-sm text-white uppercase tracking-wider">
-                    {research.title}
-                  </h3>
-                  <p className="text-xs text-steel-400 leading-relaxed font-sans">
-                    {research.description}
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-white/5 text-[10px] font-mono text-[#7c8ba1]">
-                  <span className="text-blue-500 font-semibold block uppercase mb-1">OPERATIONAL SCOPE:</span>
-                  <p className="text-xs text-[#7c8ba1]/70 leading-relaxed">{research.operationalImpact}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-        </div>
-      </section>
 
       {/* 6. OPERATIONAL SECTORS SECTION */}
       <section id="sectors" className="py-24 border-t border-white/5 bg-[#0e1014] relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="max-w-2xl text-left space-y-3 mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="max-w-2xl text-left space-y-3 mb-16"
+          >
             <span className="text-xs font-mono font-medium text-blue-500 uppercase tracking-widest block">
               Where We Work
             </span>
@@ -593,16 +494,16 @@ export default function App() {
             <p className="text-sm text-steel-400 leading-relaxed">
               We build specialized hardware and software for various industries requiring high-security levels.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {OPERATIONAL_SECTORS_DATA.map((sector, index) => (
               <motion.div
                 key={sector.id}
-                initial={{ opacity: 0, scale: 0.98 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.05 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.5, delay: index * 0.08 }}
                 className="bento-card p-5 flex flex-col justify-between"
               >
                 <div className="space-y-3">
@@ -634,7 +535,13 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
             {/* Left side text column (5 cols) */}
-            <div className="lg:col-span-5 space-y-6 text-left">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              className="lg:col-span-5 space-y-6 text-left"
+            >
               <span className="text-xs font-mono font-medium text-blue-500 uppercase tracking-widest block">
                 Our Commitment
               </span>
@@ -649,13 +556,17 @@ export default function App() {
                 <Lock className="h-4 w-4 text-blue-500" />
                 <span>100% Offline &amp; Private Security</span>
               </div>
-            </div>
+            </motion.div>
 
             {/* Right side list column (7 cols) */}
             <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
               {TRUST_PRINCIPLES.map((principle, index) => (
-                <div
+                <motion.div
                   key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.6, delay: index * 0.08 }}
                   className="bento-card p-5 space-y-2"
                 >
                   <h4 className="font-display font-medium text-xs text-white uppercase tracking-wider flex items-center space-x-2">
@@ -665,7 +576,7 @@ export default function App() {
                   <p className="text-[11px] text-steel-400 leading-relaxed font-sans">
                     {principle.description}
                   </p>
-                </div>
+                </motion.div>
               ))}
             </div>
 
@@ -679,7 +590,13 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
             
             {/* Context support text block */}
-            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-28 text-left">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              className="lg:col-span-4 space-y-6 lg:sticky lg:top-28 text-left"
+            >
               <div className="space-y-2">
                 <span className="text-xs font-mono font-medium text-blue-500 uppercase tracking-widest block">
                   Reach Out
@@ -714,12 +631,18 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Interactive Secure Contact Form block */}
-            <div className="lg:col-span-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
+              className="lg:col-span-8"
+            >
               <SecureContactForm />
-            </div>
+            </motion.div>
 
           </div>
         </div>

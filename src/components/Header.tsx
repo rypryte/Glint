@@ -18,7 +18,6 @@ export default function Header() {
     { label: "Home", id: "hero" },
     { label: "What We Do", id: "capabilities" },
     { label: "Our Products", id: "systems" },
-    { label: "Future Projects", id: "research" },
     { label: "Sectors", id: "sectors" },
     { label: "Contact", id: "secure-contact" },
   ];

@@ -42,7 +42,13 @@ export default function ProductCatalog({ droneImg, commsImg, thermalImg }: Produ
   return (
     <div className="space-y-10">
       {/* Introduction text of catalog */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/5 pb-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/5 pb-8"
+      >
         <div className="max-w-2xl">
           <span className="text-xs font-mono font-medium text-blue-500 uppercase tracking-widest block mb-2">
             Our Products &amp; Systems
@@ -58,11 +64,11 @@ export default function ProductCatalog({ droneImg, commsImg, thermalImg }: Produ
           <Shield className="h-4 w-4 text-blue-500" />
           <span>PORTFOLIO CLASSIFICATION: SECURE DESIGN</span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Grid of Products */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.map((product) => {
+        {products.map((product, index) => {
           const badge = getStatusStyle(product.status);
           const isSelected = selectedProduct?.id === product.id;
 
@@ -71,6 +77,10 @@ export default function ProductCatalog({ droneImg, commsImg, thermalImg }: Produ
               layoutId={`product-wrapper-${product.id}`}
               onClick={() => setSelectedProduct(product)}
               key={product.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6, delay: index * 0.08 }}
               className="bento-card overflow-hidden flex flex-col h-full group cursor-pointer"
               whileHover={{ y: -4 }}
             >

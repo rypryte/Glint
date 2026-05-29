@@ -1,5 +1,6 @@
 import React from "react";
 import { Shield, Lock } from "lucide-react";
+import logoImg from "../assets/images/regenerated_image_1779718150435.jpg";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -50,7 +51,7 @@ export default function Footer() {
             <div className="flex items-center space-x-2">
               <div className="h-5 w-5 rounded border border-blue-500/30 overflow-hidden bg-graphite-900 flex-shrink-0">
                 <img
-                  src="/src/assets/images/regenerated_image_1779718150435.jpg"
+                  src={logoImg}
                   alt="Glint Logo"
                   className="h-full w-full object-cover"
                   referrerPolicy="no-referrer"

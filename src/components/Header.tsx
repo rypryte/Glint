@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Shield, Menu, X, Terminal, Radio } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import logoImg from "../assets/images/regenerated_image_1779718150435.jpg";
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -57,7 +58,7 @@ export default function Header() {
           >
             <div className="flex h-9 w-9 items-center justify-center rounded border border-blue-500/30 bg-graphite-900 overflow-hidden group-hover:border-blue-500 group-hover:shadow-lg group-hover:shadow-blue-500/10 transition-all duration-300">
               <img
-                src="/src/assets/images/regenerated_image_1779718150435.jpg"
+                src={logoImg}
                 alt="Glint Logo"
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"

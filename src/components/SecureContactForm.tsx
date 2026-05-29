@@ -11,6 +11,7 @@ export default function SecureContactForm() {
     inquiryType: "Strategic Partnership",
     message: "",
   });
+  const [honeypot, setHoneypot] = useState("");
 
   const [status, setStatus] = useState<"idle" | "securing" | "submitting" | "success" | "error">("idle");
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -78,7 +79,8 @@ export default function SecureContactForm() {
           organization: formData.organization.trim(),
           email: formData.email.toLowerCase().trim(),
           inquiryType: formData.inquiryType,
-          message: formData.message.trim()
+          message: formData.message.trim(),
+          website: honeypot
         })
       });
 
@@ -124,6 +126,7 @@ export default function SecureContactForm() {
       inquiryType: "Strategic Partnership",
       message: "",
     });
+    setHoneypot("");
     setStatus("idle");
     setLogs([]);
     setTicketId("");
@@ -170,6 +173,18 @@ export default function SecureContactForm() {
                   </p>
                 </div>
               )}
+
+              {/* Spam Honeypot Protection Field */}
+              <div className="hidden" aria-hidden="true">
+                <input
+                  type="text"
+                  name="website"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>

@@ -2,6 +2,7 @@ import express, { Response } from 'express';
 import { dbDataStore } from '../database';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
 import { spamAndMaliceFilter, rateLimiter } from '../middleware/security';
+import { sendInquiryEmail } from '../services/email';
 
 const router = express.Router();
 
@@ -15,7 +16,19 @@ router.post(
   spamAndMaliceFilter as any,
   async (req: express.Request, res: Response) => {
     try {
-      const { name, organization, email, inquiryType, message } = req.body || {};
+      const { name, organization, email, inquiryType, message, website } = req.body || {};
+
+      // 1. Honeypot Spam Protection check
+      if (website && website.trim().length > 0) {
+        console.warn('[Security Handshake] Honeypot field was populated. Denying bot request silently.');
+        // Return a mock success response to confuse the spam bot without executing logic
+        return res.status(201).json({
+          success: true,
+          message: 'Inquiry safely received and queued for evaluation.',
+          ticketId: `GLINT-REQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       // Standard sanitization/pattern validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -35,27 +48,60 @@ router.post(
 
       const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
 
-      // Insert into resilient operational database queue
-      const inquiry = await dbDataStore.createInquiry({
+      // 2. Insert into resilient operational database queue
+      let ticketId = `GLINT-REQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      let timestamp = new Date();
+      let dbSuccess = false;
+
+      try {
+        const inquiry = await dbDataStore.createInquiry({
+          name: name.trim(),
+          organization: organization.trim(),
+          email: email.toLowerCase().trim(),
+          inquiryType: inquiryType || 'General Info',
+          message: message.trim(),
+          ipAddress: clientIp.split(',')[0].trim()
+        });
+        ticketId = inquiry.ticketId;
+        timestamp = inquiry.timestamp;
+        dbSuccess = true;
+        console.log(`[Queue Audit] New security request filed in DB. Ref ID: ${ticketId} from IP: ${inquiry.ipAddress}`);
+      } catch (dbErr) {
+        // Fallback for Vercel serverless environment (read-only file system or DB connection issues)
+        console.warn('[Queue Warning] Database write collapsed, falling back to serverless SMTP-direct delivery:', dbErr);
+      }
+
+      // 3. Dispatch secure email using SMTP mail server
+      const emailPayload = {
         name: name.trim(),
         organization: organization.trim(),
         email: email.toLowerCase().trim(),
         inquiryType: inquiryType || 'General Info',
         message: message.trim(),
-        ipAddress: clientIp.split(',')[0].trim()
-      });
+        ticketId,
+        timestamp
+      };
 
-      console.log(`[Queue Audit] New security request filed. Ref ID: ${inquiry.ticketId} from IP: ${inquiry.ipAddress}`);
+      const mailSuccess = await sendInquiryEmail(emailPayload);
+      if (!mailSuccess && !dbSuccess) {
+        // If BOTH database logging and SMTP sending failed, return a 500 error
+        return res.status(500).json({
+          error: 'Transmission Failure',
+          message: 'Secure communication buffers collapsed. Please retry in some minutes.'
+        });
+      }
 
       return res.status(201).json({
         success: true,
-        message: 'Inquiry safely received and queued for evaluation.',
-        ticketId: inquiry.ticketId,
-        timestamp: inquiry.timestamp
+        message: mailSuccess 
+          ? 'Inquiry safely received and forwarded via secure webmail channels.'
+          : 'Inquiry safely cached but offline delivery pending.',
+        ticketId,
+        timestamp
       });
 
     } catch (err: any) {
-      console.error('[Queue Error] Error writing operational request to database queue:', err);
+      console.error('[Queue Error] Error processing operational request:', err);
       return res.status(500).json({
         error: 'Queue Transmission Failure',
         message: 'Internal communication buffers collapsed. Please retry in some minutes.'
